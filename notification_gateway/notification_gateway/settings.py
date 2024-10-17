@@ -145,14 +145,41 @@ UNFOLD = {
     "SITE_HEADER": _("Notification Gateway"),
     "SITE_TITLE": _("Notification Gateway"),
     "SITE_SYMBOL": "Gateway",
+    "SITE_ICON": {
+        "light": lambda request: static("icon-light.svg"),  # light mode
+        "dark": lambda request: static("icon-dark.svg"),  # dark mode
+    },
+    "SITE_LOGO": lambda request: static("logos/wa_logo.png"),  # both modes, optimise for 32px height
     # "SITE_LOGO": {
-    #     "light": lambda r: static("wa-logo-green.png"),  # light mode
-    #     "dark": lambda r: static("wa-logo-white.png"),  # dark mode
+    #     "light": lambda request: static("logo-light.svg"),  # light mode
+    #     "dark": lambda request: static("logo-dark.svg"),  # dark mode
     # },
-    # "LOGIN": {
-    #     "image": lambda r: static("login-bg.png"),
-    #     # "redirect_after": lambda r: reverse_lazy("admin:APP_MODEL_changelist"),
-    # },
+    "SITE_SYMBOL": "speed",  # symbol from icon set
+    "SITE_FAVICONS": [
+        {
+            "rel": "icon",
+            "sizes": "32x32",
+            "type": "image/svg+xml",
+            "href": lambda request: static("favicon.svg"),
+        },
+    ],
+    "SHOW_HISTORY": True, # show/hide "History" button, default: True
+    "SHOW_VIEW_ON_SITE": True, # show/hide "View on site" button, default: True
+    # "THEME": "dark", # Force theme: "dark" or "light". Will disable theme switcher
+    "LOGIN": {
+        "image": lambda request: static("logos/login.jpg"),
+        "redirect_after": lambda request: reverse_lazy("admin:database_tenant_changelist"),
+    },
+    "EXTENSIONS": {
+        "modeltranslation": {
+            "flags": {
+                "de": "🇩🇪",
+                "en": "🇬🇧",
+                "fr": "🇫🇷",
+                "nl": "🇧🇪",
+            },
+        },
+    },
     "SIDEBAR": {
         "show_search": True,
         "show_all_applications": True,
