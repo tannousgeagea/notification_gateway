@@ -3,6 +3,9 @@ import os
 import json
 import time
 import uuid
+import django
+django.setup()
+import traceback
 import importlib
 from pathlib import Path
 from fastapi import Body
@@ -12,8 +15,12 @@ from pydantic import BaseModel
 from fastapi import HTTPException
 from fastapi.routing import APIRoute
 from typing_extensions import Annotated
+from fastapi import status
 from fastapi import FastAPI, Depends, APIRouter, Request, Header, Response
 from typing import Callable, Union, Any, Dict, AnyStr, Optional, List
+
+from django.core.exceptions import ObjectDoesNotExist
+from database.models import NotificationRequest
 
 from events_api.tasks import (
     email
@@ -42,7 +49,7 @@ class ApiResponse(BaseModel):
     data: Optional[Dict[AnyStr, Any]] = None
 
 
-class NotificationRequest(BaseModel):
+class ApiNotificationRequest(BaseModel):
     tenant_domain:Optional[str]=None
     tenant_logo:str
     message:str
@@ -60,7 +67,7 @@ router = APIRouter(
     "/email", methods=["POST"], tags=["Notification"]
 )
 async def handle_event(
-    payload: NotificationRequest = Body(...),
+    payload: ApiNotificationRequest = Body(...),
     x_request_id: Annotated[Optional[str], Header()] = None,
 ) -> ApiResponse:
     
@@ -78,9 +85,61 @@ async def handle_event(
 
 
 @router.api_route(
-    "/email/{task_id}", methods=["GET"], tags=["Notification"], response_model=ApiResponse
+    "/email/{task_id}", methods=["GET"], tags=["Notification"]
 )
-async def get_event_status(task_id: str, response: Response, x_request_id:Annotated[Optional[str], Header()] = None):
-    result = {"status": "received", "task_id": str(uuid.uuid4()), "data": {}}
+def get_event_status(
+    task_id: str, 
+    response: Response, 
+    ):
+    results = {}
+    try:
+        
+        if not NotificationRequest.objects.filter(request_id=task_id).exists():
+            results["error"] = {
+                "status_code": "not found",
+                "status_description": f"Task id {task_id} not found",
+                "detail": f"Invalid task id {task_id}",
+            }
+            
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return results
+        
+        request_notification = NotificationRequest.objects.get(request_id=task_id)
+        results.update(
+            {
+                "status": request_notification.request_status,
+                "time": request_notification.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "task_id": task_id,
+                "error": request_notification.error_message,
+                
+            }
+        )
+        
+    except ObjectDoesNotExist as e:
+        results['error'] = {
+            'status_code': "non-matching-query",
+            'status_description': f'Matching query was not found',
+            'detail': f"matching query does not exist. {e}"
+        }
 
-    return result
+        response.status_code = status.HTTP_404_NOT_FOUND
+        
+    except HTTPException as e:
+        results['error'] = {
+            "status_code": "not found",
+            "status_description": "Request not Found",
+            "detail": f"{e}",
+        }
+        
+        response.status_code = status.HTTP_404_NOT_FOUND
+    
+    except Exception as e:
+        results['error'] = {
+            'status_code': 'server-error',
+            "status_description": "Internal Server Error",
+            "detail": traceback.format_exc(),
+        }
+        
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    
+    return results

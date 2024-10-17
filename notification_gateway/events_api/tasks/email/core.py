@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from jinja2 import Template
 from django.conf import settings
 from common_utils.email.core import send_email
+from common_utils.models.common import get_notification_request
 from database.models import (
     Tenant,
     EmailSettings,
@@ -31,11 +32,11 @@ def execute(self, payload, **kwargs):
         if Tenant.objects.filter(domain=payload.tenant_domain).exists():
             tenant = Tenant.objects.get(domain=payload.tenant_domain)
             
-        notification_request = NotificationRequest(
-            tenant=tenant if tenant else wa_tenant,
+        notification_request = get_notification_request(
+            tenant=tenant,
             notification_template=notification_template,
-            request_id=str(uuid.uuid4()),
-            request_name="registration",
+            request_id=self.request.id,
+            request_name='registration',
         )
         
         email_setting = EmailSettings.objects.get(username="notification@wasteant.com")
