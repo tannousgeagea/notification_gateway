@@ -15,6 +15,7 @@ def send_email(
     host:str,
     port:int,
     wa_logo:str,
+    tenant_logo:str,
 ):
 
     """
@@ -41,7 +42,11 @@ def send_email(
             logo.add_header('Content-ID', '<logo>')
             email_msg.attach(logo)
 
-    
+        with open(tenant_logo, 'rb') as img:
+            logo = MIMEImage(img.read())
+            logo.add_header('Content-ID', '<tenant-logo>')
+            email_msg.attach(logo)
+
         with smtplib.SMTP(host, port) as server:
             server.starttls()
             server.login(username, password)

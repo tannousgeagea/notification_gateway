@@ -18,6 +18,34 @@ class Tenant(models.Model):
     def __str__(self):
         return f"{self.tenant_name}"
     
+class Recipient(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="recipients")
+    name = models.CharField(max_length=255)
+    email = models.EmailField(unique=True)
+    is_active = models.BooleanField(default=True, help_text="Indicates if the recipient is currently active.")
+
+    class Meta:
+        db_table = 'recipient'
+        verbose_name_plural = "Recipients"
+        unique_together = ('tenant', 'email')  # Prevent duplicate emails for the same tenant
+
+    def __str__(self):
+        return f"{self.name} ({self.email}) - {self.tenant.tenant_name}"
+
+class TenantStorageSettings(models.Model):
+    tenant = models.OneToOneField(Tenant, on_delete=models.RESTRICT, related_name='storage_settings')
+    provider_name = models.CharField(max_length=100, choices=[('azure', 'Azure'), ('aws', 'AWS'), ('gcp', 'GCP')])
+    account_name = models.CharField(max_length=255, help_text="Storage Account Name")
+    account_key = models.CharField(max_length=255, blank=True, help_text="Storage Account Key or equivalent")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tenant_storage_settings"
+        verbose_name_plural = "Tenant Storage Settings"
+
+    def __str__(self):
+        return f"{self.provider_name} settings for {self.tenant.tenant_name}"
+
 class NotificationTemplate(models.Model):
     subject = models.CharField(max_length=255)
     template_body = models.TextField()

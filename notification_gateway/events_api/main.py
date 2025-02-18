@@ -14,7 +14,8 @@ from asgi_correlation_id import correlation_id
 
 from events_api.config import celery_utils
 from events_api.routers import (
-    email
+    email,
+    alarm
 )
 
 
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
 
     app.celery_app = celery_utils.create_celery()
     app.include_router(email.endpoint.router)
+    app.include_router(alarm.endpoint.router)
     
     return app
 

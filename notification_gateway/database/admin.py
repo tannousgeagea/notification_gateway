@@ -1,8 +1,8 @@
 
 from django import forms
 from django.contrib import admin
-from unfold.admin import ModelAdmin
-from .models import Tenant, NotificationTemplate, NotificationRequest, EmailSettings
+from unfold.admin import ModelAdmin, TabularInline
+from .models import Tenant, NotificationTemplate, NotificationRequest, EmailSettings, Recipient, TenantStorageSettings
 
 class EmailSettingsAdminForm(forms.ModelForm):
     class Meta:
@@ -12,13 +12,37 @@ class EmailSettingsAdminForm(forms.ModelForm):
             'password': forms.PasswordInput(render_value=True),
         }
 
+class RecipientInline(TabularInline):
+    model = Recipient
+    extra = 1
+
+class TenantStorageSettingsInline(TabularInline):
+    model = TenantStorageSettings
+    extra = 1
+
 @admin.register(Tenant)
 class TenantAdmin(ModelAdmin):
     list_display = ('tenant_id', 'tenant_name', 'location', 'domain', 'logo', 'is_active', 'created_at')
     search_fields = ('tenant_name', 'tenant_id', 'location')
     list_filter = ('is_active', 'created_at')
     readonly_fields = ('created_at',)
+    inlines = [RecipientInline, TenantStorageSettingsInline]
 
+@admin.register(Recipient)
+class RecipientAdmin(ModelAdmin):
+    list_display = ("name", "email", "tenant", "is_active")
+    search_fields = ("name", "email", "tenant__tenant_name")
+    list_filter = ("is_active", "tenant")
+    ordering = ("tenant", "name")
+    actions = ["activate_recipients", "deactivate_recipients"]
+
+    def activate_recipients(self, request, queryset):
+        queryset.update(is_active=True)
+    activate_recipients.short_description = "Activate selected recipients"
+
+    def deactivate_recipients(self, request, queryset):
+        queryset.update(is_active=False)
+    deactivate_recipients.short_description = "Deactivate selected recipients"
 
 @admin.register(NotificationTemplate)
 class NotificationTemplateAdmin(ModelAdmin):
