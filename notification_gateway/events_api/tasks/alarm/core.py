@@ -1,5 +1,6 @@
 
 import uuid
+import pytz
 import django
 django.setup()
 from django.db import IntegrityError
@@ -8,7 +9,7 @@ from celery import shared_task
 from datetime import datetime, timezone
 from jinja2 import Template
 from django.conf import settings
-from common_utils.email.core import send_email
+from common_utils.email.core import send_alarm_email
 from common_utils.models.common import get_notification_request
 from database.models import (
     Tenant,
@@ -32,8 +33,9 @@ def execute(self, payload, **kwargs):
         
         tenant = Tenant.objects.filter(domain=payload.tenant_domain).first()
         if not tenant:
-            raise ObjectDoesNotExist(f"❌ Tenant {tenant_domain} does not exist.") 
+            raise ObjectDoesNotExist(f"❌ Tenant {payload.tenant_domain} does not exist.") 
             
+        tenant_tz = pytz.timezone(tenant.timezone)
         tenant_storage_settings = TenantStorageSettings.objects.filter(tenant=tenant).first()
         active_recipients = list(Recipient.objects.filter(tenant=tenant, is_active=True).values_list('email', flat=True))
         notification_request = get_notification_request(
@@ -48,7 +50,7 @@ def execute(self, payload, **kwargs):
         
         template = Template(msg_template)
         context = {
-            "date": datetime.now().strftime(DATETIME_FORMAT),
+            "date": datetime.now().astimezone(tenant_tz).strftime(DATETIME_FORMAT),
             "year": datetime.now().year,
             "tenant_logo": tenant.logo.url,
             "company_name": wa_tenant.tenant_name,
@@ -58,12 +60,12 @@ def execute(self, payload, **kwargs):
             "severity_level": payload.severity_level,
             "event_type": payload.event_type,
             "alarm_description": payload.alarm_description,
-            "delivery_id": payload.delivery_id if payload.delivery_id else '',
+            "delivery_id": payload.delivery_id if payload.delivery_id else 'Keine Zuordnung',
             "image_url": f"https://wacoreblob.blob.core.windows.net/{payload.image_url}?{tenant_storage_settings.account_key}",
         }
 
         rendered_msg = template.render(context)
-        send_email(
+        send_alarm_email(
             username=email_setting.username,
             password=email_setting.password,
             host=email_setting.host,
@@ -73,6 +75,7 @@ def execute(self, payload, **kwargs):
             subject=f"{notification_template.subject}: {payload.event_type} [{payload.severity_level}]",
             wa_logo=f"{wa_tenant.logo.path}",
             tenant_logo=tenant.logo.path,
+            image_url=f"https://wacoreblob.blob.core.windows.net/{payload.image_url}?{tenant_storage_settings.account_key}",
         )
         
         notification_request.request_status = 'sent'
