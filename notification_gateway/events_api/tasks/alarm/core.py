@@ -64,6 +64,14 @@ def execute(self, payload, **kwargs):
             "image_url": f"https://wacoreblob.blob.core.windows.net/{payload.image_url}?{tenant_storage_settings.account_key}",
         }
 
+        if payload.delivery_id:
+            context.update(
+                {
+                    "delivery_url": f"https://{tenant.domain}/acceptancontrol/single_event?delivery_id={payload.delivery_id}",
+                    "delivery_url_text": f"Weiterleitung zum Dashboard (Tabelle: Anlieferung)"
+                }
+            )
+
         rendered_msg = template.render(context)
         send_alarm_email(
             username=email_setting.username,
