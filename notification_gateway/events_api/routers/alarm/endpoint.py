@@ -50,6 +50,7 @@ class ApiResponse(BaseModel):
 
 
 class ApiNotificationRequest(BaseModel):
+    event_uid:Optional[str]=None
     tenant_domain:Optional[str]=None
     timestamp:datetime
     location:str

@@ -72,6 +72,20 @@ def execute(self, payload, **kwargs):
                 }
             )
 
+        if payload.event_uid:
+            event_uid = payload.event_uid
+        
+        else:
+            event_uid = payload.image_url.split("_")[-1].split(".jpg")[0]
+
+        if event_uid:
+            context.update(
+                {
+                    "dashboard_url": f"https://{tenant.domain}/alarmsmanagement/single_event?alarm_id={event_uid}",
+                    "dashboard_text": f"Weiterleitung zum Dashboard (Tabelle: Aufälligkeit)"
+                }
+            )
+
         rendered_msg = template.render(context)
         send_alarm_email(
             username=email_setting.username,
